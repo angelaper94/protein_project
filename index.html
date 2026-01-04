@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Protein Project – Keep your future alive</title>
+
+<style>
+body{
+    margin:0;
+    background:#000;
+    color:#fff;
+    font-family: Consolas, "Courier New", monospace;
+}
+.screen{
+    display:none;
+    width:100vw;
+    height:100vh;
+    padding:20px;
+    box-sizing:border-box;
+}
+.active{display:block;}
+.center{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    height:100%;
+    text-align:center;
+}
+.title{
+    font-size:32px;
+    margin-bottom:20px;
+}
+.subtitle{
+    font-size:16px;
+    margin-bottom:40px;
+}
+.box{
+    border:1px solid #fff;
+    padding:15px;
+    margin-top:18px;
+}
+button{
+    background:#000;
+    color:#fff;
+    border:1px solid #fff;
+    padding:8px 20px;
+    cursor:pointer;
+    margin:5px;
+    font-family:inherit;
+}
+button:hover{background:#222;}
+input{
+    background:#000;
+    color:#fff;
+    border:1px solid #fff;
+    font-family:inherit;
+    padding:4px;
+}
+.ok{color:#7CFC00;}
+.err{color:#FF5555;}
+.arrow{
+    font-size:26px;
+    cursor:pointer;
+    margin-top:20px;
+    display:block;
+}
+.sequence{letter-spacing:2px;}
+.aa{
+    border:1px dashed #fff;
+    padding:4px 6px;
+    margin:4px;
+    cursor:pointer;
+    display:inline-block;
+}
+.hidden{display:none;}
+.text{line-height:1.2;}
+img{image-rendering:pixelated;}
+</style>
+</head>
+
+<body>
+
+<!-- ================= SCHERMATA TITOLO ================= -->
+<div id="titleScreen" class="screen active">
+    <div class="center">
+        <div class="title">PROTEIN PROJECT</div>
+        <div class="subtitle">Keep your future alive</div>
+        <button onclick="go('intro')">START</button>
+    </div>
+</div>
+
+<!-- ================= INTRO ================= -->
+<div id="intro" class="screen">
+<div id="introText" class="text"></div>
+<button id="introAccept" class="hidden" onclick="go('fase1')">
+ACCETTO L’INCARICO
+</button>
+</div>
+
+<!-- ================= FASE 1 ================= -->
+<div id="fase1" class="screen">
+<div id="fase1IntroText" class="text"></div>
+
+<input id="locInput" class="hidden">
+<button id="fase1Btn" class="hidden" onclick="checkNucleo()">INVIA</button>
+
+<p id="fb1"></p>
+<span id="fase1Next" class="arrow hidden" onclick="go('fase2')">→</span>
+</div>
+
+<!-- ================= FASE 2 ================= -->
+<div id="fase2" class="screen">
+<div id="fase2Text" class="text"></div>
+
+<div id="dnaBox" class="box sequence hidden">
+TACACAATATAAGTTTTAACAGGAGATCCAATT
+</div>
+
+<div id="enzimaText" class="text"></div>
+
+<div id="enzimaButtons" class="hidden">
+<button onclick="enzima(false)">DNA polimerasi</button>
+<button onclick="enzima(true)">RNA polimerasi</button>
+<button onclick="enzima(false)">ATP sintasi</button>
+</div>
+
+<p id="fb2"></p>
+
+<div id="trascrizione" class="hidden">
+<p>&gt; Trascrivi la sequenza di mRNA corretta:</p>
+<input id="mrnaInput" size="60">
+<button onclick="checkMRNA()">CONFERMA</button>
+<p id="fb3"></p>
+<span id="fase2Next" class="arrow hidden" onclick="go('fase2b')">→</span>
+</div>
+</div>
+
+<!-- ===== TRANSIZIONE CITOPLASMA ===== -->
+<div id="fase2b" class="screen">
+<div id="fase2bText" class="text"></div>
+<button id="toCytoplasm" class="hidden" onclick="go('fase3')">
+VAI AL CITOPLASMA
+</button>
+</div>
+
+<!-- ================= FASE 3 ================= -->
+<div id="fase3" class="screen">
+<div id="fase3Text" class="text"></div>
+
+<img id="ruotaImg"
+     src="Attività LA SINTESI PROTEICA (1).png"
+     width="400"
+     alt="Ruota degli amminoacidi per la traduzione proteica"
+     class="hidden"
+     style="cursor:pointer"
+     onclick="toggleRuota()">
+
+<div id="ruotaBox" class="box hidden text">
+<p>&gt; Le basi azotate dell' mRNA vengono lette dai ribosomi come triplette, chiamate CODONI.</p>
+<p>&gt; Per ogni codone viene richiamato uno tRNA che trasporta uno specifico amminoacido.</p>
+<p>&gt; Usa l'immagine per associare ciascuna tripletta all'amminoacido giusto.</p>
+<p>&gt; Il ribosoma legge la sequenza fino ad un codone di STOP.</p>
+</div>
+
+<div id="mrnaBox" class="box sequence hidden">
+AUGUGUUAUAUUCAAAAUUGUCCUCUAGGUUAA
+</div>
+
+<p id="tradPrompt" class="hidden">&gt; Costruisci la sequenza di amminoacidi</p>
+
+<div id="aaChoices" class="hidden"></div>
+<div id="aaOut" class="box hidden"></div>
+
+<button id="delAA" class="hidden" onclick="removeAA()">CANCELLA ULTIMO</button>
+<button id="confAA" class="hidden" onclick="confirmAA()">CONFERMA</button>
+<p id="fb4"></p>
+<span id="fase3Next" class="arrow hidden" onclick="go('finale')">→</span>
+</div>
+
+<!-- ================= FINALE ================= -->
+<div id="finale" class="screen">
+<div id="finalText" class="text"></div>
+<button id="replayBtn" class="hidden" onclick="go('titleScreen')">
+RIGIOCA
+</button>
+</div>
+
+<script>
+/* ================= MACCHINA DA SCRIVERE ================= */
+function typeText(el, text, speed=30, callback=null){
+    el.innerHTML="";
+    let i=0;
+    (function typing(){
+        if(i < text.length){
+            const c=text.charAt(i);
+            el.innerHTML += (c === "\n") ? "<br>" : c;
+            i++;
+            setTimeout(typing, speed);
+        }else if(callback){
+            callback();
+        }
+    })();
+}
+
+/* ================= NAVIGAZIONE ================= */
+function go(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+
+    if(id==="intro"){
+        introAccept.classList.add("hidden");
+        typeText(
+            introText,
+`> CONNESSIONE STABILITA.
+> Qui MR X.
+>
+> Il mondo è sull’orlo del collasso.
+>
+> Per evitare l’estinzione dell’umanità è necessario sintetizzare una proteina chiave.
+>
+> Ho bisogno di qualcuno che conosca la genetica
+> E che sia in grado di operare su sistemi informatici complessi.
+>
+> Tu sei un genetista affermato e anche un esperto informatico.
+>
+> Per questo ti ho scelto.
+>
+> Se accetti,
+> Questa missione potrebbe salvare il mondo.`,
+            30,
+            ()=>introAccept.classList.remove("hidden")
+        );
+    }
+
+    if(id==="fase1"){
+        locInput.classList.add("hidden");
+        fase1Btn.classList.add("hidden");
+        fase1Next.classList.add("hidden");
+        fb1.textContent="";
+
+        typeText(
+            fase1IntroText,
+`> INCARICO ACCETTATO.
+>
+> Inizializzazione protocollo genetico.
+>
+> Accesso ai sistemi biologici in corso.
+>
+> Connessione alla cellula bersaglio stabilita.
+>
+>
+> All’interno della cellula l’informazione genetica non è distribuita ovunque.
+> Dobbiamo essere veloci e individuare subito l'organulo da esaminare.
+>
+> Indica in quale parte della cellula si trova l’informazione genetica necessaria per costruire le proteine.`,
+            30,
+            ()=>{
+                locInput.classList.remove("hidden");
+                fase1Btn.classList.remove("hidden");
+            }
+        );
+    }
+
+    if(id==="fase2"){
+        dnaBox.classList.add("hidden");
+        enzimaButtons.classList.add("hidden");
+        enzimaText.innerHTML="";
+        trascrizione.classList.add("hidden");
+
+        typeText(
+            fase2Text,
+`> Ottimo lavoro.
+>
+> Siamo riusciti ad entrare nel nucleo.
+>
+> Scansione della cromatina in corso.
+>
+> Sequenza di DNA di interesse individuata.`,
+            30,
+            ()=>{
+                dnaBox.classList.remove("hidden");
+                typeText(
+                    enzimaText,
+`> La sequenza è chiara.
+>
+> Quale enzima usiamo per trascrivere correttamente il DNA?`,
+                    30,
+                    ()=>enzimaButtons.classList.remove("hidden")
+                );
+            }
+        );
+    }
+if(id==="fase2b"){
+    toCytoplasm.classList.add("hidden");
+
+    typeText(
+        fase2bText,
+`> La trascrizione è completata.
+>
+> È il momento di uscire da qui.
+>
+> Spostiamoci nel citoplasma.
+>
+> Lì troveremo tutto il necessario
+> Per procedere alla traduzione.`,
+        30,
+        ()=>toCytoplasm.classList.remove("hidden")
+    );
+}
+
+    if(id==="fase3"){
+        ruotaImg.classList.add("hidden");
+        ruotaBox.classList.add("hidden");
+        mrnaBox.classList.add("hidden");
+        tradPrompt.classList.add("hidden");
+        aaChoices.classList.add("hidden");
+        aaOut.classList.add("hidden");
+        delAA.classList.add("hidden");
+        confAA.classList.add("hidden");
+
+        typeText(
+            fase3Text,
+`>  Nel citoplasma troviamo ribosomi e tRNA, ci serviranno entrambi.
+>
+> Procediamo con la traduzione.
+> 
+> Aggangio la sequenza di mRNA al ribosoma.
+> Lettura delle triplette di codoni.
+>
+>`,
+            30,
+            ()=>{
+                ruotaImg.classList.remove("hidden");
+                mrnaBox.classList.remove("hidden");
+                tradPrompt.classList.remove("hidden");
+                aaChoices.classList.remove("hidden");
+                aaOut.classList.remove("hidden");
+                delAA.classList.remove("hidden");
+                confAA.classList.remove("hidden");
+                setupAminoacids();
+            }
+        );
+    }
+
+ if(id==="finale"){
+    replayBtn.classList.add("hidden");
+
+    typeText(
+        finalText,
+`> MISSIONE COMPLETATA.
+>
+> La proteina è stata sintetizzata correttamente.
+>
+> Hai creato l’ossitocina.
+>
+> L’ossitocina è un ormone e un neurotrasmettitore.
+>
+> È coinvolta nella regolazione delle emozioni.
+> Favorisce i legami sociali e la fiducia.
+>
+> L’ossitocina è essenziale per la cooperazione umana.
+> Senza di essa, i legami sociali si indeboliscono.
+>
+> Ripristinare la sua sintesi
+> Significa dare all’umanità la possibilità
+> Di collaborare e sopravvivere.
+>
+> Grazie a te l’umanità ha una nuova possibilità.`,
+        30,
+        ()=>replayBtn.classList.remove("hidden")
+    );
+  }
+}
+
+/* ================= LOGICA GIOCO ================= */
+function checkNucleo(){
+    if(locInput.value.toLowerCase().replace(/\s+/g,"")==="nucleo"){
+        fb1.className="ok";
+typeText(
+    fb1,
+    "> Perfetto. Entriamoci subito",
+    20,
+    ()=>fase1Next.classList.remove("hidden")
+);
+    }else{
+        fb1.className="err";
+typeText(fb1, "> Risposta errata.", 20);
+    }
+}
+
+function enzima(ok){
+    if(ok){
+       fb2.className="ok";
+typeText(
+    fb2,
+    "> Perfetto. Iniziamo la trascrizione.",
+    20,
+    ()=>trascrizione.classList.remove("hidden")
+);
+    }else{
+       fb2.className="err";
+typeText(fb2, "> Enzima errato.", 20);
+    }
+}
+
+function checkMRNA(){
+    const shown="AUG UGU UAU AUU CAA AAU UGU CCU CUA GGU UAA";
+    const input=mrnaInput.value.replace(/\s+/g,"").toUpperCase();
+    if(input===shown.replace(/\s+/g,"")){
+        fb3.className="ok";
+typeText(
+    fb3,
+    "> Trascrizione completata.",
+    20,
+    ()=>fase2Next.classList.remove("hidden")
+);
+    }else{
+	fb3.className="err";
+	typeText(fb3, "> Sequenza errata.", 20);
+            }
+}
+
+function toggleRuota(){
+    ruotaBox.classList.toggle("hidden");
+}
+
+const allAminoacids=[
+"Met","Cys","Tyr","Ile","Gln","Asn","Pro","Leu","Gly",
+"Ala","Val","Ser","Thr","Asp","Glu","Phe","Trp","His","Lys","Arg","STOP"
+];
+const corretti=["Met","Cys","Tyr","Ile","Gln","Asn","Cys","Pro","Leu","Gly","STOP"];
+let seq=[];
+
+function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+}
+
+function setupAminoacids(){
+    aaChoices.innerHTML="";
+    aaOut.textContent="";
+    seq=[];
+    shuffle([...allAminoacids]).forEach(a=>{
+        const e=document.createElement("div");
+        e.textContent=a;
+        e.className="aa";
+        e.onclick=()=>{
+            seq.push(a);
+            aaOut.textContent=seq.join(" – ");
+        };
+        aaChoices.appendChild(e);
+    });
+}
+
+function removeAA(){
+    seq.pop();
+    aaOut.textContent=seq.join(" – ");
+}
+
+function confirmAA(){
+    if(JSON.stringify(seq.map(s=>s.toUpperCase()))===
+       JSON.stringify(corretti.map(s=>s.toUpperCase()))){
+        fb4.className="ok";
+typeText(
+    fb4,
+    "> Sequenza corretta. La sequenza di amminoacidi è pronta per essere trasportata nell'apparato di Golgi dove completerà la maturazione.",
+    20,
+    ()=>fase3Next.classList.remove("hidden")
+);
+
+    }else{
+	fb4.className="err";
+	typeText(fb4, "> Sequenza errata.", 20);
+    }
+}
+
+/* AVVIO */
+go("titleScreen");
+</script>
+
+</body>
+</html>
+
